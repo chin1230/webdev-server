@@ -1,0 +1,72 @@
+import { v4 as uuidv4 } from "uuid";
+import type Database from "../Database";
+
+type Course = (typeof Database.courses)[number];
+
+export default function CoursesDao(db: typeof Database) {
+  function findAllCourses() {
+    return db.courses;
+  }
+
+  function findCoursesForEnrolledUser(userId: string) {
+    const { courses, enrollments } = db;
+
+    return courses.filter((course) =>
+      enrollments.some(
+        (enrollment) =>
+          enrollment.user === userId &&
+          enrollment.course === course._id,
+      ),
+    );
+  }
+
+  function createCourse(course: Omit<Course, "_id">) {
+    const newCourse = {
+      ...course,
+      _id: uuidv4(),
+    };
+
+    db.courses = [...db.courses, newCourse];
+
+    return newCourse;
+  }
+
+  function deleteCourse(courseId: string) {
+    const { courses, enrollments } = db;
+
+    db.courses = courses.filter(
+      (course) => course._id !== courseId,
+    );
+
+    db.enrollments = enrollments.filter(
+      (enrollment) => enrollment.course !== courseId,
+    );
+  }
+
+  function updateCourse(
+    courseId: string,
+    courseUpdates: Partial<Course>,
+  ) {
+    const course = db.courses.find(
+      (course) => course._id === courseId,
+    );
+
+    if (!course) {
+      return null;
+    }
+
+    Object.assign(course, courseUpdates, {
+      _id: courseId,
+    });
+
+    return course;
+  }
+
+  return {
+    findAllCourses,
+    findCoursesForEnrolledUser,
+    createCourse,
+    deleteCourse,
+    updateCourse,
+  };
+}
